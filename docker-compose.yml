@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
 
   allarr:
-    image: ${DOCKERHUB_USER:-tu_usuario}/allarr:latest
+    image: ${DOCKERHUB_USER:-iplaza3d}/allarr:latest
     build: .
     container_name: allarr
     environment:
