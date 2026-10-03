@@ -1,51 +1,10 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><title>allarr</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-body{font-family:system-ui;background:#111;color:#eee;margin:0}header{display:flex;gap:8px;padding:10px;background:#1c1c1c;flex-wrap:wrap}
-button,input{background:#2a2a2a;color:#eee;border:1px solid #444;padding:6px 10px;border-radius:4px}button{cursor:pointer}
-main{padding:12px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.card{background:#1c1c1c;border-radius:6px;overflow:hidden;font-size:13px}.card img{width:100%;display:block}.card div{padding:6px}
-table{width:100%;border-collapse:collapse}td{padding:4px;border-bottom:1px solid #333;font-size:13px}.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.day{background:#1c1c1c;min-height:90px;padding:3px;font-size:11px;border-radius:4px}.day h6{margin:0 0 3px;color:#888}.ev{display:block;margin:2px 0;padding:2px 4px;border-radius:3px;background:#2a2a2a;cursor:pointer}.ev.mine{background:#1f5f3a}.ev.tv{border-left:3px solid #4aa3ff}.ev.movie{border-left:3px solid #ffb84a}.err{color:#f66}
-label{display:block;margin:6px 0}label input{width:420px;max-width:90%}
-</style></head><body>
-<header><b>allarr</b>
-<input id="q" placeholder="Buscar película o serie…"><button onclick="search()">Buscar</button>
-<button onclick="trend('movie')">Pelis</button><button onclick="trend('tv')">Series</button>
-<button onclick="watch()">Lista</button><button onclick="calView()">Calendario</button><button onclick="dl()">Descargas</button><button onclick="autoRun()">Auto ahora</button><button onclick="cfg()">Ajustes</button></header>
+<link rel="stylesheet" href="/static/style.css"></head><body>
+<nav id="side"><div class="logo">allarr</div>
+<a data-v="discover">🧭 Descubrir</a><a data-v="movies">🎬 Películas</a><a data-v="series">📺 Series</a>
+<a data-v="calendar">📅 Calendario</a><a data-v="list">⭐ Mi lista</a><a data-v="downloads">⬇️ Descargas</a><a data-v="settings">⚙️ Ajustes</a></nav>
+<div id="top"><input id="q" placeholder="Buscar películas y series…" autocomplete="off"></div>
 <main id="m"></main>
-<script>
-const m=document.getElementById('m');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function api(u,o){const r=await fetch(u,o);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||r.status);return j}
-const J=(method,b)=>({method,headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
-let items=[];
-function cards(l){items=l;m.innerHTML='<div class="grid">'+l.map((i,n)=>`<div class="card"><img src="${esc(i.poster)||''}"><div><b>${esc(i.title)}</b> (${esc(i.year)})<br>
-<button onclick="add(${n})">+ Lista</button> <button onclick="find(${n})">Torrents</button></div></div>`).join('')+'</div>'}
-const show=p=>p.catch(e=>m.innerHTML='<p class="err">'+esc(e.message)+'</p>');
-const search=()=>show(api('/api/search?q='+encodeURIComponent(q.value)).then(cards));
-const trend=t=>show(api('/api/trending/'+t).then(cards));
-const add=n=>show(api('/api/watchlist',J('POST',items[n])).then(()=>alert('Añadido')));
-const watch=()=>show(api('/api/watchlist').then(cards));
-function find(n){const i=items[n];m.innerHTML='Buscando…';show(api('/api/torrents?q='+encodeURIComponent(i.title)+'&media_type='+i.media_type).then(r=>{
- window.res=r.results;m.innerHTML=r.errors.map(e=>'<p class="err">'+esc(e)+'</p>').join('')+'<table>'+r.results.map((t,k)=>`<tr><td>${esc(t.title)}</td><td>${esc(t.source)}</td><td>${t.seeders}</td><td><button onclick="grab(${k})">Descargar</button></td></tr>`).join('')+'</table>'}))}
-const grab=k=>{const t=res[k];show(api('/api/grab',J('POST',t)).then(()=>alert('Enviado a Download Station')))};
-const dl=()=>show(api('/api/downloads').then(l=>{m.innerHTML='<table>'+l.map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(t.status)}</td><td>${t.progress}%</td><td>
-<button onclick="act('${esc(t.id)}','pause')">⏸</button><button onclick="act('${esc(t.id)}','resume')">▶</button><button onclick="act('${esc(t.id)}','delete')">🗑</button></td></tr>`).join('')+'</table>'}));
-const act=(id,a)=>show(api('/api/downloads/'+encodeURIComponent(id)+'/'+a,{method:'POST'}).then(dl));
-const cfg=()=>show(api('/api/settings').then(s=>{m.innerHTML=Object.keys(s).map(k=>`<label>${k}<br><input name="${k}" value="${esc(s[k])}"></label>`).join('')+'<button onclick="save()">Guardar</button> <button onclick="vpn()">Probar VPN proxy</button>'}));
-const save=()=>{const b={};document.querySelectorAll('input[name]').forEach(i=>b[i.name]=i.value);show(api('/api/settings',J('PUT',b)).then(()=>alert('Guardado')))};
-const vpn=()=>show(api('/api/vpn').then(r=>alert('IP vía VPN: '+r.ip+' ('+r.country+')')));
-const autoRun=()=>show(api("/api/auto/run",{method:"POST"}).then(r=>alert(JSON.stringify(r))));
-let calMonth=new Date();calMonth.setDate(1);let calEvents=[];
-const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-function calView(shift){if(shift)calMonth.setMonth(calMonth.getMonth()+shift);
- const y=calMonth.getFullYear(),mo=calMonth.getMonth(),last=new Date(y,mo+1,0).getDate();
- m.innerHTML='Cargando…';
- show(api('/api/calendar?start='+iso(calMonth)+'&end='+iso(new Date(y,mo,last))).then(ev=>{calEvents=ev;
-  const lead=(calMonth.getDay()+6)%7;let h='<p><button onclick="calView(-1)">◀</button> <b>'+calMonth.toLocaleDateString('es-ES',{month:'long',year:'numeric'})+'</b> <button onclick="calView(1)">▶</button> <small>verde = en tu lista · azul = serie · naranja = película</small></p><div class="cal">';
-  ['L','M','X','J','V','S','D'].forEach(d=>h+='<b>'+d+'</b>');for(let i=0;i<lead;i++)h+='<div></div>';
-  for(let d=1;d<=last;d++){const key=iso(new Date(y,mo,d));h+='<div class="day"><h6>'+d+'</h6>'+ev.map((e,n)=>e.date===key?`<span class="ev ${e.media_type} ${e.in_list?'mine':''}" onclick="calAdd(${n})" title="${esc(e.title)}">${esc(e.title)}${e.season?' S'+e.season+'E'+e.episode:''}</span>`:'').join('')+'</div>'}
-  m.innerHTML=h+'</div>'}))}
-const calAdd=n=>{const e=calEvents[n];if(e.in_list)return;if(confirm('¿Añadir "'+e.title+'" a tu lista?'))show(api('/api/watchlist',J('POST',e)).then(()=>{e.in_list=true;calView()}))};
-trend("movie");
-</script></body></html>
+<div id="modal"><div class="dlg" id="dlg"></div></div>
+<script src="/static/app.js"></script></body></html>

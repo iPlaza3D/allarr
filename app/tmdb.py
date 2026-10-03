@@ -4,6 +4,7 @@ import httpx
 
 BASE = "https://api.themoviedb.org/3"
 IMG = "https://image.tmdb.org/t/p/w342"
+BACKDROP = "https://image.tmdb.org/t/p/w780"
 
 
 class TMDB:
@@ -23,6 +24,7 @@ class TMDB:
     def normalize(item: dict, media_type: str | None = None) -> dict:
         date = item.get("release_date") or item.get("first_air_date") or ""
         poster = item.get("poster_path")
+        backdrop = item.get("backdrop_path")
         return {
             "tmdb_id": item["id"],
             "media_type": media_type or item.get("media_type"),
@@ -31,6 +33,7 @@ class TMDB:
             "year": date[:4],
             "overview": item.get("overview", ""),
             "poster": f"{IMG}{poster}" if poster else None,
+            "backdrop": f"{BACKDROP}{backdrop}" if backdrop else None,
             "rating": item.get("vote_average"),
         }
 
@@ -46,6 +49,9 @@ class TMDB:
         d = self._get(f"/{media_type}/{tmdb_id}")
         out = self.normalize(d, media_type)
         out["release_date"] = d.get("release_date") or ""
+        out["genres"] = [g["name"] for g in d.get("genres", [])]
+        out["runtime"] = d.get("runtime") or (d.get("episode_run_time") or [None])[0]
+        out["tagline"] = d.get("tagline", "")
         out["seasons"] = [s["season_number"] for s in d.get("seasons", []) if s["season_number"] > 0]
         return out
 
@@ -70,3 +76,9 @@ class TMDB:
             if page >= d.get("total_pages", 1):
                 break
         return [o for o in out if start <= o["date"] <= end]
+
+    def popular(self, media_type: str) -> list[dict]:
+        return [self.normalize(i, media_type) for i in self._get(f"/{media_type}/popular")["results"]]
+
+    def upcoming(self) -> list[dict]:
+        return [self.normalize(i, "movie") for i in self._get("/movie/upcoming", region=self.region)["results"]]

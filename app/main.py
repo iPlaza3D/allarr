@@ -54,6 +54,27 @@ def search(q: str):
     return _guard(lambda: _tmdb().search(q))
 
 
+@app.get("/api/discover/{row}")
+def discover_row(row: str):
+    rows = {
+        "trending_movie": lambda t: t.trending("movie"),
+        "trending_tv": lambda t: t.trending("tv"),
+        "popular_movie": lambda t: t.popular("movie"),
+        "popular_tv": lambda t: t.popular("tv"),
+        "upcoming": lambda t: t.upcoming(),
+    }
+    if row not in rows:
+        raise HTTPException(404, "Fila desconocida")
+    return _guard(lambda: rows[row](_tmdb()))
+
+
+@app.get("/api/details/{media_type}/{tmdb_id}")
+def details(media_type: str, tmdb_id: int):
+    if media_type not in ("movie", "tv"):
+        raise HTTPException(400, "media_type inválido")
+    return _guard(lambda: _tmdb().details(media_type, tmdb_id))
+
+
 @app.get("/api/trending/{media_type}")
 def trending(media_type: str):
     if media_type not in ("movie", "tv"):
