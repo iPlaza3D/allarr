@@ -1,5 +1,5 @@
-"""Fuente Wolfmax4k. TODO el tráfico hacia el sitio sale por el proxy de la VPN (gluetun),
-porque el ISP bloquea el dominio. Si no hay proxy configurado se niega a conectar."""
+"""Fuente Wolfmax4k. Si hay proxy configurado, todo el tráfico sale por él (útil si el ISP
+bloquea el dominio); si no, conecta directamente."""
 from __future__ import annotations
 
 import re
@@ -19,10 +19,8 @@ class Wolfmax:
     def __init__(self, base_url: str, proxy: str):
         if not base_url:
             raise ValueError("Falta la URL de Wolfmax4k")
-        if not proxy:
-            raise ValueError("Proxy VPN obligatorio para Wolfmax4k (bloqueo del ISP)")
         self.base = base_url.rstrip("/") + "/"
-        self.client = httpx.Client(proxy=proxy, headers=UA, timeout=30, follow_redirects=True)
+        self.client = httpx.Client(proxy=proxy or None, headers=UA, timeout=30, follow_redirects=True)
 
     def close(self) -> None:
         self.client.close()
