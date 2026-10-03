@@ -278,6 +278,18 @@ def browse(path: str = "/"):
     return {"path": str(p), "parent": str(p.parent) if p != p.parent else None, "dirs": dirs}
 
 
+class LibFix(BaseModel):
+    folder: str
+    tmdb_id: Optional[int] = None
+
+
+@app.post("/api/library/{kind}/fix")
+def library_fix(kind: str, f: LibFix):
+    if kind not in library.KINDS:
+        raise HTTPException(404, "Biblioteca desconocida")
+    return _guard(lambda: library.fix(kind, f.folder, _tmdb(), f.tmdb_id))
+
+
 @app.get("/api/library/{kind}")
 def library_list(kind: str):
     if kind not in library.KINDS:

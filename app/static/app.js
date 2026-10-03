@@ -24,6 +24,7 @@ const P={
  globe:'<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>',
  refresh:'<polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/>',
  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
  key:'<path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
 };
 const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
@@ -72,7 +73,7 @@ function card(i){
   <div class="ov"><span class="y">${esc(i.year)} ${i.rating?`<span class="star">${ic('star','fill')}</span> ${i.rating.toFixed(1).replace('.',',')}`:''}</span><span class="t">${esc(i.title)}</span><span class="d">${esc(i.overview)}</span></div></div>`}
 const slider=(t,icn,l)=>`<h2>${ic(icn)}${t}</h2><div class="slider">${l.map(card).join('')||'<div class="empty">Sin resultados</div>'}</div>`;
 const grid=l=>l.length?`<div class="grid">${l.map(card).join('')}</div>`:'<div class="empty">No hay nada todavía</div>';
-m.addEventListener('click',e=>{const c=e.target.closest('.card');const i=c&&cache[c.dataset.k];if(i&&i.tmdb_id)openModal(i)});
+m.addEventListener('click',e=>{const fb=e.target.closest('.fixb');if(fb){e.stopPropagation();fixDialog(fb.dataset.fix,fb.dataset.f);return}const c=e.target.closest('.card');const i=c&&cache[c.dataset.k];if(i&&i.tmdb_id)openModal(i)});
 
 const views={
  async discover(){const rows=[['Tendencias · Películas','trend','trending_movie'],['Tendencias · Series','trend','trending_tv'],['Películas populares','film','popular_movie'],['Series populares','tv','popular_tv'],['Próximos estrenos','clock','upcoming']];
@@ -82,10 +83,12 @@ const views={
  async series(){await lib('Series','tv',[['series','Series'],['series_anim','Series de animación']])},
  async list(){m.innerHTML=`<h2>${ic('bookmark')}Mi lista</h2>`+grid(await api('/api/watchlist'))},
  calendar:calView,downloads:dl,settings:cfg};
+let libKinds=[];
 async function lib(title,icn,kinds){
+  libKinds=kinds;
   m.innerHTML='<div class="empty">Leyendo biblioteca…</div>';
   const data=await Promise.all(kinds.map(k=>api('/api/library/'+k[0])));
-  m.innerHTML=`<h2>${ic(icn)}${title}</h2>`+kinds.map((k,n)=>`<h2 class="sub">${k[1]} <small>(${data[n].length})</small></h2>`+(data[n].length?`<div class="grid">${data[n].map(card).join('')}</div>`:'<div class="empty">Sin contenido. Configura la ruta en Ajustes → Bibliotecas.</div>')).join('')}
+  m.innerHTML=`<h2>${ic(icn)}${title}</h2>`+kinds.map((k,n)=>`<h2 class="sub">${k[1]} <small>(${data[n].length})</small></h2>`+(data[n].length?`<div class="grid">${data[n].map(i=>card(i).replace('<div class="ov">',`<button class="fixb" data-fix="${esc(k[0])}" data-f="${esc(i.folder)}" title="Corregir identificación">${ic('edit')}</button><div class="ov">`)).join('')}</div>`:'<div class="empty">Sin contenido. Configura la ruta en Ajustes → Bibliotecas.</div>')).join('')}
 let current='discover',started=false;
 async function go(v){current=v;$('#q').value='';document.querySelectorAll('#menu a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
   try{await loadMine();await views[v]()}catch(e){fail(e)}}
@@ -93,6 +96,22 @@ function startApp(){if(started){go(current);return}started=true;
   document.querySelectorAll('#menu a').forEach(a=>a.onclick=()=>go(a.dataset.v));go('discover')}
 let t;$('#q').oninput=e=>{clearTimeout(t);const v=e.target.value.trim();if(!v){go(current);return}
   t=setTimeout(async()=>{try{await loadMine();const r=await api('/api/search?q='+encodeURIComponent(v));m.innerHTML=`<h2>${ic('search')}Resultados para «${esc(v)}»</h2>`+grid(r)}catch(e){fail(e)}},350)};
+
+// ---------- corregir identificación ----------
+function fixDialog(kind,folder){
+  const mt=kind.startsWith('series')?'tv':'movie';
+  const ov=document.createElement('div');ov.className='open';ov.id='bro';document.body.appendChild(ov);
+  ov.innerHTML=`<div class="dlg"><div class="body"><h3>Corregir identificación</h3><p><code>${esc(folder)}</code></p>
+   <div class="actions"><input id="fq" value="${esc(folder.replace(/[._]/g,' ').replace(/\s*[\(\[]?(19|20)\d{2}.*$/,'').trim())}"><button class="btn" id="fgo">${ic('search')}Buscar</button></div>
+   <div id="fres" class="panel"></div><div class="actions"><button class="btn sec" id="frs">Restablecer automático</button><button class="btn sec" id="fcl">Cancelar</button></div></div></div>`;
+  const done=()=>{ov.remove();views[current]().catch(fail)};
+  const send=async id=>{try{await api('/api/library/'+kind+'/fix',J('POST',{folder,tmdb_id:id}));done()}catch(e){toast(e.message,1)}};
+  const go=async()=>{const q=$('#fq').value.trim();if(!q)return;$('#fres').innerHTML='<div class="empty">Buscando…</div>';
+   try{const r=(await api('/api/search?q='+encodeURIComponent(q))).filter(x=>x.media_type===mt);
+    $('#fres').innerHTML=r.length?`<table>${r.map(x=>`<tr><td>${x.poster?`<img src="${esc(x.poster)}" width="40" alt="">`:''}</td><td>${esc(x.title)} <small>${esc(x.year)}</small><br><small>${esc((x.overview||'').slice(0,110))}</small></td><td><button class="btn sm" data-id="${x.tmdb_id}">Elegir</button></td></tr>`).join('')}</table>`:'<div class="empty">Sin resultados</div>';
+    $('#fres').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>send(+b.dataset.id))}catch(e){$('#fres').innerHTML=`<div class="err">${esc(e.message)}</div>`}};
+  $('#fgo').onclick=go;$('#fq').onkeydown=e=>{if(e.key==='Enter')go()};$('#frs').onclick=()=>send(null);$('#fcl').onclick=()=>ov.remove();go();
+}
 
 // ---------- ficha ----------
 const modal=$('#modal'),dlg=$('#dlg'),closeModal=()=>modal.classList.remove('open');

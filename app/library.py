@@ -79,3 +79,16 @@ def items(s: dict, kind: str, tmdb: TMDB) -> list[dict]:
     names = scan(path, kind)
     with ThreadPoolExecutor(8) as ex:
         return list(ex.map(lambda n: _lookup(tmdb, mt, n), names))
+
+
+def fix(kind: str, folder: str, tmdb: TMDB, tmdb_id: int | None) -> dict:
+    """Asigna manualmente el título de TMDB a una carpeta; sin tmdb_id borra la corrección."""
+    mt = media_type(kind)
+    if tmdb_id is None:
+        with config.conn() as c:
+            c.execute("DELETE FROM lib_meta WHERE media_type=? AND name=?", (mt, folder))
+        return _lookup(tmdb, mt, folder)
+    item = {**tmdb.details(mt, tmdb_id), "folder": folder}
+    with config.conn() as c:
+        c.execute("INSERT OR REPLACE INTO lib_meta VALUES (?,?,?)", (mt, folder, json.dumps(item)))
+    return item
