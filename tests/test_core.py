@@ -81,3 +81,10 @@ def test_lockout(monkeypatch, tmp_path):
     codes = [c.post("/api/auth/login", json={"username": "admin", "password": "x"}).status_code for _ in range(6)]
     assert codes[-1] == 429
     auth._fails.clear()
+
+
+def test_torznab_wolfmax_is_spanish():
+    from app.torznab import parse
+    xml = """<rss xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel>
+<item><title>Renoir 2025 HDRip</title><jackettindexer>Wolfmax4K</jackettindexer><link>http://j/dl</link></item></channel></rss>"""
+    assert parse(xml)[0]["spanish"]

@@ -9,7 +9,8 @@ DB_PATH = Path(os.getenv("ALLARR_DB", "data/allarr.db"))
 DEFAULTS = {
     "tmdb_api_key": os.getenv("TMDB_API_KEY", ""),
     "language": os.getenv("ALLARR_LANGUAGE", "es-ES"),
-    "wolfmax_url": os.getenv("WOLFMAX_URL", ""),
+    "torznab_url": os.getenv("TORZNAB_URL", ""),
+    "torznab_apikey": os.getenv("TORZNAB_APIKEY", ""),
     "auto_interval_min": os.getenv("AUTO_INTERVAL_MIN", "60"),
     "ds_url": os.getenv("DS_URL", ""),
     "ds_user": os.getenv("DS_USER", ""),
@@ -20,7 +21,7 @@ DEFAULTS = {
     "lib_series": os.getenv("LIB_SERIES", ""),
     "lib_series_anim": os.getenv("LIB_SERIES_ANIM", ""),
 }
-SECRET_KEYS = {"tmdb_api_key", "ds_password"}
+SECRET_KEYS = {"tmdb_api_key", "torznab_apikey", "ds_password"}
 
 
 def conn() -> sqlite3.Connection:

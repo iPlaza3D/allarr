@@ -203,13 +203,11 @@ def torrents(q: str, media_type: str = "movie"):
 class Grab(BaseModel):
     link: str
     title: str = "download"
-    source: str = ""
-    page: bool = False
 
 
 @app.post("/api/grab")
 def grab(g: Grab):
-    return _guard(lambda: services.grab(config.get_settings(), g.link, g.title, g.source, g.page))
+    return _guard(lambda: services.grab(config.get_settings(), g.link, g.title))
 
 
 @app.post("/api/auto/run")
@@ -249,18 +247,12 @@ def test_connection(target: str):
             with _ds() as ds:
                 n = len(ds.list_tasks())
             return {"message": f"Conexión correcta con Download Station ({n} tareas)"}
-        if target == "wolfmax":
-            if not s["wolfmax_url"]:
-                raise ValueError("Falta la URL de Wolfmax4k")
-            from .wolfmax import UA
-            try:
-                r = httpx.get(s["wolfmax_url"], timeout=20, follow_redirects=True, headers=UA)
-            except httpx.TransportError as e:
-                raise RuntimeError(
-                    f"{e}. El servidor no puede llegar al sitio (bloqueo del operador/DNS desde el NAS). "
-                    "Prueba a cambiar el DNS del NAS a 1.1.1.1 u 8.8.8.8, o revisa la URL")
+        if target == "torznab":
+            if not s["torznab_url"]:
+                raise ValueError("Falta la URL Torznab")
+            r = httpx.get(s["torznab_url"], params={"t": "caps", "apikey": s["torznab_apikey"]}, timeout=20)
             r.raise_for_status()
-            return {"message": "Conexión correcta con Wolfmax4k"}
+            return {"message": "Conexión correcta con Jackett"}
         if target == "library":
             out = []
             for kind, label in library.KINDS.items():

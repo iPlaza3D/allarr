@@ -156,8 +156,8 @@ async function dl(){
 const SECTIONS=[
  {icon:'globe',title:'Metadatos (TMDB)',desc:'Información de películas y series en castellano (es-ES). Necesitas una clave API gratuita de themoviedb.org.',test:'tmdb',
   fields:[['tmdb_api_key','Clave API de TMDB','password','Ajustes de tu cuenta de TMDB → API']]},
- {icon:'search',title:'Fuente de torrents (Wolfmax4k)',desc:'Dirección web actual de Wolfmax4k. Solo se muestran resultados en castellano.',test:'wolfmax',
-  fields:[['wolfmax_url','URL de Wolfmax4k','text','Ej.: https://wolfmax4k.com']]},
+ {icon:'search',title:'Jackett (fuente de torrents)',desc:'Tu JackettVPN con el indexador Wolfmax4k. Solo se muestran resultados en castellano. Mantén Jackett actualizado: Wolfmax4k cambia a menudo.',test:'torznab',
+  fields:[['torznab_url','URL Torznab','text','Ej.: http://IP_NAS:9117/api/v2.0/indexers/all/results/torznab/api'],['torznab_apikey','Clave API de Jackett','password','Arriba a la derecha en el panel de Jackett']]},
  {icon:'server',title:'Download Station (XPEnology / Synology)',desc:'Usa un usuario de DSM con permiso para Download Station y sin verificación en dos pasos.',test:'ds',
   fields:[['ds_url','URL de DSM','text','Ej.: http://192.168.1.10:5000'],['ds_user','Usuario','text',''],['ds_password','Contraseña','password',''],['ds_destination','Carpeta de destino','text','Carpeta compartida, p. ej. video/peliculas. Vacío = la predeterminada']]},
  {icon:'film',title:'Bibliotecas',desc:'Rutas de las carpetas del NAS tal como las ve el contenedor (por ejemplo /media/peliculas). Cada tipo va en su propia carpeta.',test:'library',

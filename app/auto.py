@@ -48,7 +48,7 @@ def pick(results: list[dict], title: str, episode=None):
 
 
 def _grab(s: dict, r: dict) -> None:
-    services.grab(s, r["link"], r["title"], r["source"], r.get("page", False))
+    services.grab(s, r["link"], r["title"])
 
 
 def _movie(s: dict, tmdb: TMDB, row) -> None:
