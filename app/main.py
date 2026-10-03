@@ -5,18 +5,91 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import auto, config, services
+from . import auth, auto, config, services
 from . import calendar as cal
 from .synology import DownloadStation
 from .tmdb import TMDB
 
 app = FastAPI(title="allarr")
 STATIC = Path(__file__).parent / "static"
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    p = request.url.path
+    if p.startswith("/api/") and not p.startswith("/api/auth/"):
+        if not auth.read_token(request.cookies.get(auth.COOKIE)):
+            return JSONResponse({"detail": "Sesión no iniciada"}, status_code=401)
+    resp = await call_next(request)
+    if not p.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+class Credentials(BaseModel):
+    username: str = ""
+    password: str = ""
+    new_password: str = ""
+
+
+def _set_cookie(resp: Response, username: str) -> None:
+    resp.set_cookie(auth.COOKIE, auth.make_token(username), max_age=auth.SESSION_SECONDS, httponly=True, samesite="lax")
+
+
+@app.get("/api/auth/status")
+def auth_status(request: Request):
+    user = auth.read_token(request.cookies.get(auth.COOKIE))
+    return {"setup_needed": not auth.has_users(), "authenticated": bool(user), "username": user}
+
+
+@app.post("/api/auth/setup")
+def auth_setup(c: Credentials, response: Response):
+    if auth.has_users():
+        raise HTTPException(409, "Ya existe una cuenta de administrador")
+    name = c.username.strip()
+    if not name or len(c.password) < auth.MIN_PASSWORD:
+        raise HTTPException(400, f"Indica un usuario y una contraseña de al menos {auth.MIN_PASSWORD} caracteres")
+    auth.create_user(name, c.password)
+    _set_cookie(response, name)
+    return {"ok": True}
+
+
+@app.post("/api/auth/login")
+def auth_login(c: Credentials, request: Request, response: Response):
+    ip = request.client.host if request.client else "?"
+    if auth.locked(ip):
+        raise HTTPException(429, "Demasiados intentos. Espera unos minutos")
+    if not auth.verify(c.username.strip(), c.password):
+        auth.register_fail(ip)
+        raise HTTPException(401, "Usuario o contraseña incorrectos")
+    auth.clear_fails(ip)
+    _set_cookie(response, c.username.strip())
+    return {"ok": True}
+
+
+@app.post("/api/auth/logout")
+def auth_logout(response: Response):
+    response.delete_cookie(auth.COOKIE)
+    return {"ok": True}
+
+
+@app.post("/api/auth/password")
+def auth_password(c: Credentials, request: Request, response: Response):
+    user = auth.read_token(request.cookies.get(auth.COOKIE))
+    if not user:
+        raise HTTPException(401, "Sesión no iniciada")
+    if not auth.verify(user, c.password):
+        raise HTTPException(400, "La contraseña actual no es correcta")
+    if len(c.new_password) < auth.MIN_PASSWORD:
+        raise HTTPException(400, f"La nueva contraseña debe tener al menos {auth.MIN_PASSWORD} caracteres")
+    auth.set_password(user, c.new_password)
+    _set_cookie(response, user)
+    return {"ok": True}
 
 
 def _tmdb() -> TMDB:
@@ -161,6 +234,35 @@ def download_action(task_id: str, action: str):
         with _ds() as ds:
             getattr(ds, action)(task_id)
         return {"ok": True}
+    return _guard(run)
+
+
+@app.post("/api/test/{target}")
+def test_connection(target: str):
+    s = config.get_settings()
+
+    def run():
+        if target == "tmdb":
+            n = len(_tmdb().trending("movie"))
+            return {"message": f"Conexión correcta con TMDB ({n} resultados en castellano)"}
+        if target == "ds":
+            with _ds() as ds:
+                n = len(ds.list_tasks())
+            return {"message": f"Conexión correcta con Download Station ({n} tareas)"}
+        if target == "torznab":
+            if not s["torznab_url"]:
+                raise ValueError("Falta la URL Torznab")
+            r = httpx.get(s["torznab_url"], params={"t": "caps", "apikey": s["torznab_apikey"]}, timeout=20)
+            r.raise_for_status()
+            return {"message": "Conexión correcta con Jackett/Prowlarr"}
+        if target == "vpn":
+            if not s["vpn_proxy"]:
+                raise ValueError("No hay proxy VPN configurado")
+            with httpx.Client(proxy=s["vpn_proxy"], timeout=15) as c:
+                d = c.get("https://ipinfo.io/json").json()
+            return {"message": f"IP a través de la VPN: {d.get('ip')} ({d.get('country')})"}
+        raise HTTPException(404, "Prueba desconocida")
+
     return _guard(run)
 
 

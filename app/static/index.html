@@ -1,10 +1,12 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>allarr</title>
+<!doctype html><html lang="es-ES"><head><meta charset="utf-8"><title>allarr</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/static/style.css"></head><body>
-<nav id="side"><div class="logo">allarr</div>
-<a data-v="discover">🧭 Descubrir</a><a data-v="movies">🎬 Películas</a><a data-v="series">📺 Series</a>
-<a data-v="calendar">📅 Calendario</a><a data-v="list">⭐ Mi lista</a><a data-v="downloads">⬇️ Descargas</a><a data-v="settings">⚙️ Ajustes</a></nav>
+<div id="auth" hidden></div>
+<div id="app" hidden>
+<nav id="side"><div class="logo" id="logo"></div><div id="menu"></div>
+<div class="user"><span id="who"></span><a id="logout" title="Cerrar sesión"></a></div></nav>
 <div id="top"><input id="q" placeholder="Buscar películas y series…" autocomplete="off"></div>
 <main id="m"></main>
 <div id="modal"><div class="dlg" id="dlg"></div></div>
+</div>
 <script src="/static/app.js"></script></body></html>
