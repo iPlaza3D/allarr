@@ -58,7 +58,7 @@ $('#logout').innerHTML=ic('logout');$('#logout').onclick=()=>api('/api/auth/logo
 $('#logout').style.cursor='pointer';$('#logo').innerHTML=ic('logo')+'<span>allarr</span>';
 
 // ---------- aplicación ----------
-const key=i=>i.media_type+':'+i.tmdb_id;
+const key=i=>i.media_type+':'+(i.tmdb_id??'f:'+i.folder);
 const cache={};let mine={};
 const loadMine=()=>api('/api/watchlist').then(l=>{mine={};l.forEach(i=>mine[key(i)]=i)}).catch(()=>{});
 const NAV=[['discover','compass','Descubrir'],['movies','film','Películas'],['series','tv','Series'],['calendar','calendar','Calendario'],['list','bookmark','Mi lista'],['downloads','download','Descargas'],['settings','settings','Ajustes']];
@@ -72,16 +72,20 @@ function card(i){
   <div class="ov"><span class="y">${esc(i.year)} ${i.rating?`<span class="star">${ic('star','fill')}</span> ${i.rating.toFixed(1).replace('.',',')}`:''}</span><span class="t">${esc(i.title)}</span><span class="d">${esc(i.overview)}</span></div></div>`}
 const slider=(t,icn,l)=>`<h2>${ic(icn)}${t}</h2><div class="slider">${l.map(card).join('')||'<div class="empty">Sin resultados</div>'}</div>`;
 const grid=l=>l.length?`<div class="grid">${l.map(card).join('')}</div>`:'<div class="empty">No hay nada todavía</div>';
-m.addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openModal(cache[c.dataset.k])});
+m.addEventListener('click',e=>{const c=e.target.closest('.card');const i=c&&cache[c.dataset.k];if(i&&i.tmdb_id)openModal(i)});
 
 const views={
  async discover(){const rows=[['Tendencias · Películas','trend','trending_movie'],['Tendencias · Series','trend','trending_tv'],['Películas populares','film','popular_movie'],['Series populares','tv','popular_tv'],['Próximos estrenos','clock','upcoming']];
   m.innerHTML='<div class="empty">Cargando…</div>';const data=await Promise.all(rows.map(r=>api('/api/discover/'+r[2])));
   m.innerHTML=rows.map((r,n)=>slider(r[0],r[1],data[n])).join('')},
- async movies(){m.innerHTML=`<h2>${ic('film')}Películas populares</h2>`+grid(await api('/api/discover/popular_movie'))},
- async series(){m.innerHTML=`<h2>${ic('tv')}Series populares</h2>`+grid(await api('/api/discover/popular_tv'))},
+ async movies(){await lib('Películas','film',[['movies','Películas'],['movies_anim','Películas de animación']])},
+ async series(){await lib('Series','tv',[['series','Series'],['series_anim','Series de animación']])},
  async list(){m.innerHTML=`<h2>${ic('bookmark')}Mi lista</h2>`+grid(await api('/api/watchlist'))},
  calendar:calView,downloads:dl,settings:cfg};
+async function lib(title,icn,kinds){
+  m.innerHTML='<div class="empty">Leyendo biblioteca…</div>';
+  const data=await Promise.all(kinds.map(k=>api('/api/library/'+k[0])));
+  m.innerHTML=`<h2>${ic(icn)}${title}</h2>`+kinds.map((k,n)=>`<h2 class="sub">${k[1]} <small>(${data[n].length})</small></h2>`+(data[n].length?`<div class="grid">${data[n].map(card).join('')}</div>`:'<div class="empty">Sin contenido. Configura la ruta en Ajustes → Bibliotecas.</div>')).join('')}
 let current='discover',started=false;
 async function go(v){current=v;$('#q').value='';document.querySelectorAll('#menu a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
   try{await loadMine();await views[v]()}catch(e){fail(e)}}
@@ -152,12 +156,12 @@ async function dl(){
 const SECTIONS=[
  {icon:'globe',title:'Metadatos (TMDB)',desc:'Información de películas y series en castellano (es-ES). Necesitas una clave API gratuita de themoviedb.org.',test:'tmdb',
   fields:[['tmdb_api_key','Clave API de TMDB','password','Ajustes de tu cuenta de TMDB → API']]},
- {icon:'search',title:'Fuentes de torrents',desc:'Jackett o Prowlarr (Torznab). Añade allí Wolfmax4k y los demás indexers; solo se muestran resultados en castellano.',test:'torznab',
-  fields:[['torznab_url','URL Torznab','text','Ej.: http://IP_NAS:9117/api/v2.0/indexers/all/results/torznab/api'],['torznab_apikey','Clave API de Jackett/Prowlarr','password','']]},
- {icon:'shield',title:'VPN y Wolfmax4k directo (opcional)',desc:'Solo si quieres que allarr consulte Wolfmax4k por su cuenta. Todo el tráfico sale por el proxy de la VPN, porque el operador bloquea el sitio.',test:'vpn',
-  fields:[['wolfmax_url','URL de Wolfmax4k','text','Déjalo vacío si usas Wolfmax4k a través de Jackett'],['vpn_proxy','Proxy HTTP de la VPN','text','Ej.: http://gluetun:8888']]},
+ {icon:'search',title:'Fuente de torrents (Wolfmax4k)',desc:'Dirección web actual de Wolfmax4k. Solo se muestran resultados en castellano.',test:'wolfmax',
+  fields:[['wolfmax_url','URL de Wolfmax4k','text','Ej.: https://wolfmax4k.com']]},
  {icon:'server',title:'Download Station (XPEnology / Synology)',desc:'Usa un usuario de DSM con permiso para Download Station y sin verificación en dos pasos.',test:'ds',
   fields:[['ds_url','URL de DSM','text','Ej.: http://192.168.1.10:5000'],['ds_user','Usuario','text',''],['ds_password','Contraseña','password',''],['ds_destination','Carpeta de destino','text','Carpeta compartida, p. ej. video/peliculas. Vacío = la predeterminada']]},
+ {icon:'film',title:'Bibliotecas',desc:'Rutas de las carpetas del NAS tal como las ve el contenedor (por ejemplo /media/peliculas). Cada tipo va en su propia carpeta.',test:'library',
+  fields:[['lib_movies','Películas','text','/media/peliculas'],['lib_movies_anim','Películas de animación','text','/media/peliculas-animacion'],['lib_series','Series','text','/media/series'],['lib_series_anim','Series de animación','text','/media/series-animacion']]},
  {icon:'refresh',title:'Descarga automática',desc:'Revisa tu lista y envía a Download Station los estrenos y episodios nuevos.',
   fields:[['auto_interval_min','Frecuencia de revisión (minutos)','number','Mínimo 5']],extra:'auto'},
 ];
@@ -165,7 +169,7 @@ async function cfg(){
   const s=await api('/api/settings');
   m.innerHTML=`<h2>${ic('settings')}Ajustes</h2>`+SECTIONS.map((sec,n)=>`<form class="sect form" data-n="${n}"><h3>${ic(sec.icon)}${sec.title}</h3><p class="desc">${sec.desc}</p>
    ${sec.fields.map(f=>`<label for="f_${f[0]}">${f[1]}</label><input id="f_${f[0]}" name="${f[0]}" type="${f[2]}" value="${esc(s[f[0]])}" autocomplete="off">${f[3]?`<small>${f[3]}</small>`:''}`).join('')}
-   <div class="actions"><button class="btn" type="submit">${ic('check')}Guardar</button>${sec.test?`<button class="btn sec" type="button" data-test="${sec.test}">Guardar y probar conexión</button>`:''}
+   <div class="actions">${sec.test?`<button class="btn" type="submit" data-test="${sec.test}">${ic('check')}Probar</button>`:`<button class="btn" type="submit">${ic('check')}Guardar</button>`}
    ${sec.extra==='auto'?`<button class="btn sec" type="button" data-auto>Ejecutar ahora</button>`:''}<span class="msg"></span></div></form>`).join('')+
   `<form class="sect form" id="pwf"><h3>${ic('key')}Cuenta</h3><p class="desc">Cambia la contraseña de acceso a allarr.</p>
    <label for="pw0">Contraseña actual</label><input id="pw0" type="password" autocomplete="current-password" required>
@@ -174,8 +178,8 @@ async function cfg(){
   const say=(f,t,ok)=>{const e=f.querySelector('.msg');e.textContent=t;e.className='msg '+(ok?'ok':'bad')};
   const save=f=>{const b={};f.querySelectorAll('input[name]').forEach(i=>b[i.name]=i.value);return api('/api/settings',J('PUT',b))};
   m.querySelectorAll('form.sect[data-n]').forEach(f=>{
-    f.onsubmit=async e=>{e.preventDefault();try{await save(f);say(f,'Guardado',1)}catch(x){say(f,x.message)}};
-    const tb=f.querySelector('[data-test]');if(tb)tb.onclick=async()=>{say(f,'Probando…',1);try{await save(f);say(f,(await api('/api/test/'+tb.dataset.test,{method:'POST'})).message,1)}catch(x){say(f,x.message)}};
+    const tb=f.querySelector('[data-test]');
+    f.onsubmit=async e=>{e.preventDefault();if(!tb){try{await save(f);say(f,'Guardado',1)}catch(x){say(f,x.message)}return}say(f,'Probando…',1);try{await save(f);say(f,(await api('/api/test/'+tb.dataset.test,{method:'POST'})).message,1)}catch(x){say(f,x.message)}};
     const ab=f.querySelector('[data-auto]');if(ab)ab.onclick=async()=>{say(f,'Ejecutando…',1);try{await save(f);const r=await api('/api/auto/run',{method:'POST'});say(f,r.skipped?'Ya hay una revisión en curso':`Revisados ${r.checked} títulos`+(r.errors.length?` · ${r.errors.length} con error`:''),!r.errors?.length)}catch(x){say(f,x.message)}};
   });
   $('#pwf').onsubmit=async e=>{e.preventDefault();const f=e.target;try{await api('/api/auth/password',J('POST',{password:$('#pw0').value,new_password:$('#pw1').value}));f.reset();say(f,'Contraseña actualizada',1)}catch(x){say(f,x.message)}};

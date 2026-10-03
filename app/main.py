@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import auth, auto, config, services
+from . import auth, auto, config, library, services
 from . import calendar as cal
 from .synology import DownloadStation
 from .tmdb import TMDB
@@ -249,32 +249,31 @@ def test_connection(target: str):
             with _ds() as ds:
                 n = len(ds.list_tasks())
             return {"message": f"Conexión correcta con Download Station ({n} tareas)"}
-        if target == "torznab":
-            if not s["torznab_url"]:
-                raise ValueError("Falta la URL Torznab")
-            r = httpx.get(s["torznab_url"], params={"t": "caps", "apikey": s["torznab_apikey"]}, timeout=20)
+        if target == "wolfmax":
+            if not s["wolfmax_url"]:
+                raise ValueError("Falta la URL de Wolfmax4k")
+            r = httpx.get(s["wolfmax_url"], timeout=20, follow_redirects=True,
+                          headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
-            return {"message": "Conexión correcta con Jackett/Prowlarr"}
-        if target == "vpn":
-            if not s["vpn_proxy"]:
-                raise ValueError("No hay proxy VPN configurado")
-            with httpx.Client(proxy=s["vpn_proxy"], timeout=15) as c:
-                d = c.get("https://ipinfo.io/json").json()
-            return {"message": f"IP a través de la VPN: {d.get('ip')} ({d.get('country')})"}
+            return {"message": "Conexión correcta con Wolfmax4k"}
+        if target == "library":
+            out = []
+            for kind, label in library.KINDS.items():
+                if s[f"lib_{kind}"]:
+                    out.append(f"{label}: {len(library.scan(s[f'lib_{kind}'], kind))}")
+            if not out:
+                raise ValueError("No hay ninguna ruta configurada")
+            return {"message": "Rutas correctas · " + " · ".join(out)}
         raise HTTPException(404, "Prueba desconocida")
 
     return _guard(run)
 
 
-@app.get("/api/vpn")
-def vpn_status():
-    """IP pública vista a través del proxy VPN (comprobación de que el túnel funciona)."""
-    s = config.get_settings()
-
-    def run():
-        with httpx.Client(proxy=s["vpn_proxy"], timeout=15) as c:
-            return c.get("https://ipinfo.io/json").json()
-    return _guard(run)
+@app.get("/api/library/{kind}")
+def library_list(kind: str):
+    if kind not in library.KINDS:
+        raise HTTPException(404, "Biblioteca desconocida")
+    return _guard(lambda: library.items(config.get_settings(), kind, _tmdb()))
 
 
 @app.on_event("startup")

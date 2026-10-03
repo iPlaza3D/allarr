@@ -1,15 +1,10 @@
-from app.torznab import parse, is_spanish
-
-XML = """<rss xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel>
-<item><title>Peli 2024 Castellano 1080p</title><link>http://x/a.torrent</link>
-<torznab:attr name="seeders" value="12"/><torznab:attr name="size" value="100"/></item>
-<item><title>Movie 2024 English</title><link>http://x/b.torrent</link></item></channel></rss>"""
+from app.library import clean
 
 
-def test_parse_and_spanish():
-    r = parse(XML)
-    assert r[0]["seeders"] == 12 and r[0]["spanish"] and not r[1]["spanish"]
-    assert is_spanish("Serie Dual Español")
+def test_clean_names():
+    assert clean("Matrix (1999)") == ("Matrix", "1999")
+    assert clean("Toy.Story.1995.1080p.BluRay.x264.mkv") == ("Toy Story", "1995")
+    assert clean("Cosmos") == ("Cosmos", "")
 
 
 from app.auto import episode_of, pick

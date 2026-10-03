@@ -10,17 +10,17 @@ DEFAULTS = {
     "tmdb_api_key": os.getenv("TMDB_API_KEY", ""),
     "language": os.getenv("ALLARR_LANGUAGE", "es-ES"),
     "wolfmax_url": os.getenv("WOLFMAX_URL", ""),
-    # Opcional: proxy HTTP de una VPN (p.ej. gluetun :8888) solo para el scraper directo de Wolfmax4k
-    "vpn_proxy": os.getenv("VPN_PROXY", ""),
-    "torznab_url": os.getenv("TORZNAB_URL", ""),
-    "torznab_apikey": os.getenv("TORZNAB_APIKEY", ""),
     "auto_interval_min": os.getenv("AUTO_INTERVAL_MIN", "60"),
     "ds_url": os.getenv("DS_URL", ""),
     "ds_user": os.getenv("DS_USER", ""),
     "ds_password": os.getenv("DS_PASSWORD", ""),
     "ds_destination": os.getenv("DS_DESTINATION", ""),
+    "lib_movies": os.getenv("LIB_MOVIES", ""),
+    "lib_movies_anim": os.getenv("LIB_MOVIES_ANIM", ""),
+    "lib_series": os.getenv("LIB_SERIES", ""),
+    "lib_series_anim": os.getenv("LIB_SERIES_ANIM", ""),
 }
-SECRET_KEYS = {"tmdb_api_key", "torznab_apikey", "ds_password"}
+SECRET_KEYS = {"tmdb_api_key", "ds_password"}
 
 
 def conn() -> sqlite3.Connection:
@@ -39,6 +39,7 @@ def conn() -> sqlite3.Connection:
             tmdb_id INTEGER, season INTEGER, episode INTEGER, status TEXT DEFAULT 'grabbed',
             PRIMARY KEY (tmdb_id, season, episode))"""
     )
+    c.execute("CREATE TABLE IF NOT EXISTS lib_meta (media_type TEXT, name TEXT, data TEXT, PRIMARY KEY (media_type, name))")
     return c
 
 

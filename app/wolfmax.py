@@ -1,13 +1,10 @@
-"""Fuente Wolfmax4k. Si hay proxy configurado, todo el tráfico sale por él (útil si el ISP
-bloquea el dominio); si no, conecta directamente."""
+"""Fuente Wolfmax4k (conexión directa)."""
 from __future__ import annotations
 
 import re
 from urllib.parse import quote, urljoin
 
 import httpx
-
-from .torznab import is_spanish
 
 LINK_RE = re.compile(r'href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
 TORRENT_RE = re.compile(r'''["\']((?:https?:)?//[^"\']+?\.torrent[^"\']*|magnet:\?[^"\']+)["\']''', re.I)
@@ -16,11 +13,11 @@ UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/1
 
 
 class Wolfmax:
-    def __init__(self, base_url: str, proxy: str):
+    def __init__(self, base_url: str):
         if not base_url:
             raise ValueError("Falta la URL de Wolfmax4k")
         self.base = base_url.rstrip("/") + "/"
-        self.client = httpx.Client(proxy=proxy or None, headers=UA, timeout=30, follow_redirects=True)
+        self.client = httpx.Client(headers=UA, timeout=30, follow_redirects=True)
 
     def close(self) -> None:
         self.client.close()
