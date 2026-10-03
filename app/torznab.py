@@ -37,6 +37,13 @@ def search(url: str, apikey: str, query: str, media_type: str = "movie") -> list
     if not url:
         return []
     t = "tvsearch" if media_type == "tv" else "movie"
-    r = httpx.get(url, params={"t": t, "q": query, "apikey": apikey}, timeout=60)
-    r.raise_for_status()
-    return parse(r.text)
+    last: Exception | None = None
+    # Muchos indexadores (p. ej. Wolfmax4k) solo soportan t=search
+    for mode in (t, "search"):
+        try:
+            r = httpx.get(url, params={"t": mode, "q": query, "apikey": apikey}, timeout=60)
+            r.raise_for_status()
+            return parse(r.text)
+        except (httpx.HTTPStatusError, ValueError) as e:
+            last = e
+    raise last
