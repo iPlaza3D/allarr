@@ -167,7 +167,7 @@ async function dl(){
   const l=await api('/api/downloads');
   m.innerHTML=`<h2>${ic('download')}Download Station</h2>`+(l.length?`<div class="panel"><table><tr><th>Título</th><th>Estado</th><th>Progreso</th><th></th></tr>${l.map(x=>
    `<tr><td>${esc(x.title)}</td><td><span class="pill">${esc(STATUS[x.status]||x.status)}</span></td><td><div class="bar"><i style="width:${x.progress}%"></i></div>${String(x.progress).replace('.',',')} % ${fmtSpeed(x.speed)}</td>
-   <td><button class="btn sec sm" data-a="pause" data-id="${esc(x.id)}" title="Pausar">${ic('pause')}</button> <button class="btn sec sm" data-a="resume" data-id="${esc(x.id)}" title="Reanudar">${ic('play')}</button> <button class="btn bad sm" data-a="delete" data-id="${esc(x.id)}" title="Eliminar">${ic('trash')}</button></td></tr>`).join('')}</table></div>`:'<div class="empty">No hay descargas</div>');
+   <td><button class="btn sec sm" data-a="pause" data-id="${esc(x.id)}" title="Pausar">${ic('pause')}</button> <button class="btn sec sm" data-a="resume" data-id="${esc(x.id)}" title="Reanudar">${ic('play')}</button> <button class="btn bad sm" data-a="delete" data-id="${esc(x.id)}" title="Eliminar">${ic('trash')}</button></td></tr>`).join('')}</table></div>`:'<div class="empty">No hay descargas visibles para el usuario configurado en Ajustes → Download Station</div>');
   m.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>api('/api/downloads/'+encodeURIComponent(b.dataset.id)+'/'+b.dataset.a,{method:'POST'}).then(dl).catch(e=>toast(e.message,1)));
 }
 

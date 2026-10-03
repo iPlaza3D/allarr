@@ -246,7 +246,7 @@ def test_connection(target: str):
         if target == "ds":
             with _ds() as ds:
                 n = len(ds.list_tasks())
-            return {"message": f"Conexión correcta con Download Station ({n} tareas)"}
+            return {"message": f"Conexión correcta con Download Station como «{s['ds_user']}» ({n} tareas visibles para este usuario)"}
         if target == "torznab":
             if not s["torznab_url"]:
                 raise ValueError("Falta la URL Torznab")
