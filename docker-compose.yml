@@ -2,9 +2,6 @@ services:
   allarr:
     image: ${DOCKERHUB_USER:-iplaza3d}/allarr:latest
     container_name: allarr
-    environment:
-      # JackettVPN ya está desplegado aparte: usa la IP del NAS (puerto 9117)
-      - TORZNAB_URL=${TORZNAB_URL:-http://192.168.1.X:9117/api/v2.0/indexers/all/results/torznab/api}
     volumes: ["./data:/data"]
     ports: ["8080:8080"]
     restart: unless-stopped
