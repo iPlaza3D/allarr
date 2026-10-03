@@ -153,7 +153,7 @@ const SECTIONS=[
  {icon:'globe',title:'Metadatos (TMDB)',desc:'Información de películas y series en castellano (es-ES). Necesitas una clave API gratuita de themoviedb.org.',test:'tmdb',
   fields:[['tmdb_api_key','Clave API de TMDB','password','Ajustes de tu cuenta de TMDB → API']]},
  {icon:'search',title:'Fuentes de torrents',desc:'Jackett o Prowlarr (Torznab). Añade allí Wolfmax4k y los demás indexers; solo se muestran resultados en castellano.',test:'torznab',
-  fields:[['torznab_url','URL Torznab','text','Ej.: http://JackettVPN:9117/api/v2.0/indexers/all/results/torznab/api'],['torznab_apikey','Clave API de Jackett/Prowlarr','password','']]},
+  fields:[['torznab_url','URL Torznab','text','Ej.: http://IP_NAS:9117/api/v2.0/indexers/all/results/torznab/api'],['torznab_apikey','Clave API de Jackett/Prowlarr','password','']]},
  {icon:'shield',title:'VPN y Wolfmax4k directo (opcional)',desc:'Solo si quieres que allarr consulte Wolfmax4k por su cuenta. Todo el tráfico sale por el proxy de la VPN, porque el operador bloquea el sitio.',test:'vpn',
   fields:[['wolfmax_url','URL de Wolfmax4k','text','Déjalo vacío si usas Wolfmax4k a través de Jackett'],['vpn_proxy','Proxy HTTP de la VPN','text','Ej.: http://gluetun:8888']]},
  {icon:'server',title:'Download Station (XPEnology / Synology)',desc:'Usa un usuario de DSM con permiso para Download Station y sin verificación en dos pasos.',test:'ds',
