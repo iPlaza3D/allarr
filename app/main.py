@@ -252,8 +252,13 @@ def test_connection(target: str):
         if target == "wolfmax":
             if not s["wolfmax_url"]:
                 raise ValueError("Falta la URL de Wolfmax4k")
-            r = httpx.get(s["wolfmax_url"], timeout=20, follow_redirects=True,
-                          headers={"User-Agent": "Mozilla/5.0"})
+            from .wolfmax import UA
+            try:
+                r = httpx.get(s["wolfmax_url"], timeout=20, follow_redirects=True, headers=UA)
+            except httpx.TransportError as e:
+                raise RuntimeError(
+                    f"{e}. El servidor no puede llegar al sitio (bloqueo del operador/DNS desde el NAS). "
+                    "Prueba a cambiar el DNS del NAS a 1.1.1.1 u 8.8.8.8, o revisa la URL")
             r.raise_for_status()
             return {"message": "Conexión correcta con Wolfmax4k"}
         if target == "library":
@@ -267,6 +272,18 @@ def test_connection(target: str):
         raise HTTPException(404, "Prueba desconocida")
 
     return _guard(run)
+
+
+@app.get("/api/browse")
+def browse(path: str = "/"):
+    p = Path(path).resolve()
+    if not p.is_dir():
+        raise HTTPException(400, "No es una carpeta")
+    try:
+        dirs = sorted((d.name for d in p.iterdir() if d.is_dir() and not d.name.startswith((".", "@", "#"))), key=str.lower)
+    except PermissionError:
+        raise HTTPException(403, "Sin permiso para leer esta carpeta")
+    return {"path": str(p), "parent": str(p.parent) if p != p.parent else None, "dirs": dirs}
 
 
 @app.get("/api/library/{kind}")

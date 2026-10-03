@@ -3,6 +3,14 @@ from __future__ import annotations
 import httpx
 
 
+ERRORS = {
+    100: "error desconocido", 101: "parámetro inválido", 102: "API no disponible (¿Download Station instalado?)",
+    105: "sin permisos", 400: "usuario o contraseña incorrectos", 401: "cuenta desactivada",
+    402: "permiso denegado (activa Download Station para el usuario)", 403: "requiere verificación en dos pasos (desactívala)",
+    404: "verificación en dos pasos fallida",
+}
+
+
 class DownloadStation:
     """Cliente de la Web API de Synology Download Station (DSM 6/7, XPEnology)."""
 
@@ -12,13 +20,19 @@ class DownloadStation:
         self.base = url.rstrip("/") + "/webapi"
         self.user, self.password, self.dest = user, password, destination
         self.sid: str | None = None
-        self.http = httpx.Client(timeout=30, verify=False)  # DSM suele usar certificado autofirmado
+        self.http = httpx.Client(timeout=30, verify=False, follow_redirects=True)  # DSM suele usar certificado autofirmado
 
     def _check(self, r: httpx.Response) -> dict:
         r.raise_for_status()
-        data = r.json()
+        try:
+            data = r.json()
+        except ValueError:
+            raise RuntimeError(
+                "La URL no responde como DSM. Comprueba el protocolo y el puerto "
+                "(DSM: http://IP:5000 o https://IP:5001) y que sea la dirección de DSM, no de un proxy")
         if not data.get("success"):
-            raise RuntimeError(f"DSM error {data.get('error', {}).get('code')}")
+            code = data.get("error", {}).get("code")
+            raise RuntimeError(f"DSM error {code}: {ERRORS.get(code, 'error desconocido')}")
         return data.get("data") or {}
 
     def _call(self, path: str, **params) -> dict:

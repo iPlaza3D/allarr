@@ -165,11 +165,20 @@ const SECTIONS=[
  {icon:'refresh',title:'Descarga automática',desc:'Revisa tu lista y envía a Download Station los estrenos y episodios nuevos.',
   fields:[['auto_interval_min','Frecuencia de revisión (minutos)','number','Mínimo 5']],extra:'auto'},
 ];
+async function browse(input){
+  const ov=document.createElement('div');ov.className='open';ov.id='bro';document.body.appendChild(ov);
+  const load=async p=>{try{const d=await api('/api/browse?path='+encodeURIComponent(p));
+    ov.innerHTML=`<div class="dlg"><div class="body"><h3>Elegir carpeta</h3><p><code>${esc(d.path)}</code></p><div class="panel"><table>${d.parent?`<tr><td><a data-p="${esc(d.parent)}" style="cursor:pointer">${ic('left')} Subir</a></td></tr>`:''}${d.dirs.map(n=>`<tr><td><a data-p="${esc(d.path.replace(/\/$/,'')+'/'+n)}" style="cursor:pointer">${esc(n)}</a></td></tr>`).join('')||'<tr><td>Sin subcarpetas</td></tr>'}</table></div>
+    <div class="actions"><button class="btn" id="bsel">Seleccionar esta carpeta</button><button class="btn sec" id="bcan">Cancelar</button></div></div></div>`;
+    ov.querySelectorAll('[data-p]').forEach(a=>a.onclick=()=>load(a.dataset.p));
+    $('#bsel').onclick=()=>{input.value=d.path;ov.remove()};$('#bcan').onclick=()=>ov.remove()}catch(e){toast(e.message,1);if(p!=='/')load('/');else ov.remove()}};
+  load(input.value||'/media');
+}
 async function cfg(){
   const s=await api('/api/settings');
   m.innerHTML=`<h2>${ic('settings')}Ajustes</h2>`+SECTIONS.map((sec,n)=>`<form class="sect form" data-n="${n}"><h3>${ic(sec.icon)}${sec.title}</h3><p class="desc">${sec.desc}</p>
-   ${sec.fields.map(f=>`<label for="f_${f[0]}">${f[1]}</label><input id="f_${f[0]}" name="${f[0]}" type="${f[2]}" value="${esc(s[f[0]])}" autocomplete="off">${f[3]?`<small>${f[3]}</small>`:''}`).join('')}
-   <div class="actions">${sec.test?`<button class="btn" type="submit" data-test="${sec.test}">${ic('check')}Probar</button>`:`<button class="btn" type="submit">${ic('check')}Guardar</button>`}
+   ${sec.fields.map(f=>`<label for="f_${f[0]}">${f[1]}</label><input id="f_${f[0]}" name="${f[0]}" type="${f[2]}" value="${esc(s[f[0]])}" autocomplete="off">${f[0].startsWith('lib_')?`<button class="btn sec sm" type="button" data-browse="${f[0]}">Examinar…</button>`:''}${f[3]?`<small>${f[3]}</small>`:''}`).join('')}
+   <div class="actions"><button class="btn" type="submit">${ic('check')}Guardar</button>${sec.test?`<button class="btn sec" type="button" data-test="${sec.test}">Probar</button>`:''}
    ${sec.extra==='auto'?`<button class="btn sec" type="button" data-auto>Ejecutar ahora</button>`:''}<span class="msg"></span></div></form>`).join('')+
   `<form class="sect form" id="pwf"><h3>${ic('key')}Cuenta</h3><p class="desc">Cambia la contraseña de acceso a allarr.</p>
    <label for="pw0">Contraseña actual</label><input id="pw0" type="password" autocomplete="current-password" required>
@@ -178,8 +187,9 @@ async function cfg(){
   const say=(f,t,ok)=>{const e=f.querySelector('.msg');e.textContent=t;e.className='msg '+(ok?'ok':'bad')};
   const save=f=>{const b={};f.querySelectorAll('input[name]').forEach(i=>b[i.name]=i.value);return api('/api/settings',J('PUT',b))};
   m.querySelectorAll('form.sect[data-n]').forEach(f=>{
-    const tb=f.querySelector('[data-test]');
-    f.onsubmit=async e=>{e.preventDefault();if(!tb){try{await save(f);say(f,'Guardado',1)}catch(x){say(f,x.message)}return}say(f,'Probando…',1);try{await save(f);say(f,(await api('/api/test/'+tb.dataset.test,{method:'POST'})).message,1)}catch(x){say(f,x.message)}};
+    f.onsubmit=async e=>{e.preventDefault();try{await save(f);say(f,'Guardado',1)}catch(x){say(f,x.message)}};
+    const tb=f.querySelector('[data-test]');if(tb)tb.onclick=async()=>{say(f,'Probando…',1);try{await save(f);say(f,(await api('/api/test/'+tb.dataset.test,{method:'POST'})).message,1)}catch(x){say(f,x.message)}};
+    f.querySelectorAll('[data-browse]').forEach(b=>b.onclick=()=>browse($('#f_'+b.dataset.browse)));
     const ab=f.querySelector('[data-auto]');if(ab)ab.onclick=async()=>{say(f,'Ejecutando…',1);try{await save(f);const r=await api('/api/auto/run',{method:'POST'});say(f,r.skipped?'Ya hay una revisión en curso':`Revisados ${r.checked} títulos`+(r.errors.length?` · ${r.errors.length} con error`:''),!r.errors?.length)}catch(x){say(f,x.message)}};
   });
   $('#pwf').onsubmit=async e=>{e.preventDefault();const f=e.target;try{await api('/api/auth/password',J('POST',{password:$('#pw0').value,new_password:$('#pw1').value}));f.reset();say(f,'Contraseña actualizada',1)}catch(x){say(f,x.message)}};

@@ -77,3 +77,4 @@ h2 .ic{color:var(--pri)}
 [hidden]{display:none!important}
 
 h2.sub{font-size:16px;margin-top:22px}h2.sub small{color:var(--mut);font-weight:400}
+#bro{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50}#bro .dlg{max-width:520px;width:92%;max-height:80vh;overflow:auto}

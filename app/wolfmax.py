@@ -9,7 +9,11 @@ import httpx
 LINK_RE = re.compile(r'href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
 TORRENT_RE = re.compile(r'''["\']((?:https?:)?//[^"\']+?\.torrent[^"\']*|magnet:\?[^"\']+)["\']''', re.I)
 TAG_RE = re.compile(r"<[^>]+>")
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36"}
+UA = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "es-ES,es;q=0.9",
+}
 
 
 class Wolfmax:
