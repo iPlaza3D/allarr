@@ -79,3 +79,12 @@ h2 .ic{color:var(--pri)}
 h2.sub{font-size:16px;margin-top:22px}h2.sub small{color:var(--mut);font-weight:400}
 #bro{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50}#bro .dlg{max-width:520px;width:92%;max-height:80vh;overflow:auto}
 .card{position:relative}.fixb{position:absolute;top:6px;right:6px;z-index:3;background:rgba(0,0,0,.65);color:#fff;border:0;border-radius:6px;padding:5px;cursor:pointer;opacity:0;transition:.15s}.card:hover .fixb{opacity:1}.fixb .ic{width:15px;height:15px}
+
+.fixb.p{right:38px}
+.toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{background:var(--panel);color:var(--mut);border:0;padding:6px 14px;cursor:pointer}.seg button.on{background:var(--pri2);color:#fff}
+.chk{display:flex!important;gap:8px;align-items:center;color:var(--txt)!important;font-size:13px!important;cursor:pointer}.chk input{width:auto!important}
+h3.saga{margin:18px 0 8px;font-size:15px}h3.saga small{color:var(--mut);font-weight:400}
+.form select,#bro select{width:100%;max-width:none;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt)}
+#bro .dlg.wide{max-width:860px}#bro .dlg label{display:block;margin:10px 0 2px;color:var(--mut);font-size:12px}
+.posters{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:12px}.posters figure{margin:0;cursor:pointer;text-align:center;font-size:11px;color:var(--mut)}.posters img{width:100%;border-radius:6px;display:block}.posters figure:hover img{outline:2px solid var(--pri)}

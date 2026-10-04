@@ -10,10 +10,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import auth, auto, config, library, services
+from . import auth, auto, config, library, renamer, services
 from . import calendar as cal
 from .synology import DownloadStation
 from .tmdb import TMDB
+from .tvdb import TVDB
 
 app = FastAPI(title="allarr")
 STATIC = Path(__file__).parent / "static"
@@ -253,6 +254,9 @@ def test_connection(target: str):
             r = httpx.get(s["torznab_url"], params={"t": "caps", "apikey": s["torznab_apikey"]}, timeout=20)
             r.raise_for_status()
             return {"message": "Conexión correcta con Jackett"}
+        if target == "tvdb":
+            TVDB(s["tvdb_api_key"])._token()
+            return {"message": "Conexión correcta con TheTVDB"}
         if target == "library":
             out = []
             for kind, label in library.KINDS.items():
@@ -290,11 +294,56 @@ def library_fix(kind: str, f: LibFix):
     return _guard(lambda: library.fix(kind, f.folder, _tmdb(), f.tmdb_id))
 
 
-@app.get("/api/library/{kind}")
-def library_list(kind: str):
+class LibPoster(BaseModel):
+    folder: str
+    poster: str
+    full: str
+    save_file: bool = False
+
+
+@app.post("/api/library/{kind}/poster")
+def library_poster(kind: str, p: LibPoster):
     if kind not in library.KINDS:
         raise HTTPException(404, "Biblioteca desconocida")
-    return _guard(lambda: library.items(config.get_settings(), kind, _tmdb()))
+    path = config.get_settings()[f"lib_{kind}"]
+    return _guard(lambda: library.set_poster(kind, p.folder, p.poster, p.full, path, p.save_file))
+
+
+@app.get("/api/posters/{media_type}/{tmdb_id}")
+def posters(media_type: str, tmdb_id: int):
+    if media_type not in ("movie", "tv"):
+        raise HTTPException(400, "media_type inválido")
+    return _guard(lambda: _tmdb().posters(media_type, tmdb_id))
+
+
+class RenameReq(BaseModel):
+    kinds: list[str]
+    provider: str = "tmdb"
+    group_sagas: bool = False
+    apply: bool = False
+    only: list[str] = []
+
+
+@app.post("/api/library/rename")
+def library_rename(r: RenameReq):
+    if not r.kinds or any(k not in library.KINDS for k in r.kinds):
+        raise HTTPException(404, "Biblioteca desconocida")
+    s = config.get_settings()
+
+    def run():
+        entries = renamer.plan(s, r.kinds, r.provider, r.group_sagas, _tmdb())
+        if not r.apply:
+            return {"entries": entries}
+        chosen = [e for e in entries if e["status"] == "ok" and f"{e['kind']}|{e['folder']}" in r.only]
+        return {"results": renamer.apply(s, chosen)}
+    return _guard(run)
+
+
+@app.get("/api/library/{kind}")
+def library_list(kind: str, collections: bool = False):
+    if kind not in library.KINDS:
+        raise HTTPException(404, "Biblioteca desconocida")
+    return _guard(lambda: library.items(config.get_settings(), kind, _tmdb(), collections))
 
 
 @app.on_event("startup")

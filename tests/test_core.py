@@ -88,3 +88,79 @@ def test_torznab_wolfmax_is_spanish():
     xml = """<rss xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel>
 <item><title>Renoir 2025 HDRip</title><jackettindexer>Wolfmax4K</jackettindexer><link>http://j/dl</link></item></channel></rss>"""
     assert parse(xml)[0]["spanish"]
+
+
+def _lib(monkeypatch, tmp_path, kind="movies"):
+    from app import config
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "r.db")
+    root = tmp_path / "lib"
+    root.mkdir()
+    return root, {**config.DEFAULTS, f"lib_{kind}": str(root), "tvdb_api_key": "k"}
+
+
+class FakeTMDB:
+    def __init__(self, coll=None): self.coll = coll
+    def search(self, q):
+        return [{"tmdb_id": 7, "media_type": "movie", "title": "Matrix Recargada", "original_title": "The Matrix Reloaded",
+                 "year": "2003", "poster": None, "overview": ""}]
+    def collection_of(self, i): return self.coll
+
+
+def test_rename_movie_with_saga(monkeypatch, tmp_path):
+    from app import library, renamer
+    root, s = _lib(monkeypatch, tmp_path)
+    (root / "The.Matrix.Reloaded.2003.1080p").mkdir()
+    t = FakeTMDB({"id": 1, "name": "Matrix: Colección"})
+    e = renamer.plan(s, ["movies"], "tmdb", True, t)[0]
+    assert e["status"] == "ok" and e["new"] == "Matrix Colección (Saga)/Matrix Recargada (2003)"
+    r = renamer.apply(s, [e])
+    assert r[0]["ok"] and (root / e["new"]).is_dir()
+    assert library.scan(str(root), "movies") == [e["new"]]
+    assert library._lookup(t, "movie", e["new"])["folder"] == e["new"]
+    e2 = renamer.plan(s, ["movies"], "tmdb", False, t)[0]  # desagrupar
+    renamer.apply(s, [e2])
+    assert (root / "Matrix Recargada (2003)").is_dir() and not (root / "Matrix Colección (Saga)").exists()
+
+
+def test_rename_series_episodes_tvdb(monkeypatch, tmp_path):
+    from app import renamer
+    root, s = _lib(monkeypatch, tmp_path, "series")
+    d = root / "la.casa.de.papel.2017"
+    (d / "Temporada 1").mkdir(parents=True)
+    (d / "Temporada 1" / "lcdp.S01E02.720p.mkv").write_bytes(b"x")
+
+    class T(FakeTMDB):
+        def search(self, q):
+            return [{"tmdb_id": 9, "media_type": "tv", "title": "La casa de papel", "original_title": "La casa de papel",
+                     "year": "2017", "poster": None, "overview": ""}]
+
+    class V:
+        def __init__(self, k): pass
+        def _token(self): return "t"
+        def spanish_title(self, mt, q, year): return "La Casa de Papel: Serie"
+    monkeypatch.setattr(renamer, "TVDB", V)
+    e = renamer.plan(s, ["series"], "tvdb", False, T())[0]
+    assert e["new"] == "La Casa de Papel Serie (2017)"
+    assert e["episodes"][0]["new"] == "Temporada 1/La Casa de Papel Serie - S01E02.mkv"
+    assert renamer.apply(s, [e])[0]["ok"]
+    assert (root / e["new"] / "Temporada 1" / "La Casa de Papel Serie - S01E02.mkv").exists()
+
+
+def test_rename_conflict_and_unidentified(monkeypatch, tmp_path):
+    from app import renamer
+    root, s = _lib(monkeypatch, tmp_path)
+    (root / "Matrix.2003").mkdir()
+    (root / "Matrix Recargada (2003)").mkdir()
+    class Empty(FakeTMDB):
+        def search(self, q): return []
+    st = {e["folder"]: e["status"] for e in renamer.plan(s, ["movies"], "tmdb", False, FakeTMDB())}
+    (root / "Desconocida").mkdir()
+    assert {e["folder"]: e["status"] for e in renamer.plan(s, ["movies"], "tmdb", False, Empty())}["Desconocida"] == "unidentified"
+    assert st["Matrix.2003"] == "conflict" and st["Matrix Recargada (2003)"] == "same"
+
+
+def test_poster_rejects_foreign_url(monkeypatch, tmp_path):
+    import pytest
+    from app import library
+    with pytest.raises(ValueError):
+        library.set_poster("movies", "x", "http://evil/x.jpg", "http://evil/x.jpg", str(tmp_path), True)

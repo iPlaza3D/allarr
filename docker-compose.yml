@@ -6,7 +6,7 @@ services:
       - TZ=Europe/Madrid
     volumes:
       - ./data:/data
-      # Tus bibliotecas del NAS (solo lectura). Ajusta la ruta del volumen
-      - /volume1/video:/media:ro
+      # Tus bibliotecas del NAS (lectura y escritura, necesario para renombrar). Ajusta la ruta del volumen
+      - /volume1/video:/media
     ports: ["8080:8080"]
     restart: unless-stopped

@@ -25,6 +25,7 @@ const P={
  refresh:'<polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/>',
  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+ image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
  key:'<path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
 };
 const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
@@ -73,7 +74,7 @@ function card(i){
   <div class="ov"><span class="y">${esc(i.year)} ${i.rating?`<span class="star">${ic('star','fill')}</span> ${i.rating.toFixed(1).replace('.',',')}`:''}</span><span class="t">${esc(i.title)}</span><span class="d">${esc(i.overview)}</span></div></div>`}
 const slider=(t,icn,l)=>`<h2>${ic(icn)}${t}</h2><div class="slider">${l.map(card).join('')||'<div class="empty">Sin resultados</div>'}</div>`;
 const grid=l=>l.length?`<div class="grid">${l.map(card).join('')}</div>`:'<div class="empty">No hay nada todavía</div>';
-m.addEventListener('click',e=>{const fb=e.target.closest('.fixb');if(fb){e.stopPropagation();fixDialog(fb.dataset.fix,fb.dataset.f);return}const c=e.target.closest('.card');const i=c&&cache[c.dataset.k];if(i&&i.tmdb_id)openModal(i)});
+m.addEventListener('click',e=>{const fb=e.target.closest('.fixb');if(fb){e.stopPropagation();fb.dataset.poster?posterDialog(fb.dataset.poster,fb.dataset.f):fixDialog(fb.dataset.fix,fb.dataset.f);return}const c=e.target.closest('.card');const i=c&&cache[c.dataset.k];if(i&&i.tmdb_id)openModal(i)});
 
 const views={
  async discover(){const rows=[['Tendencias · Películas','trend','trending_movie'],['Tendencias · Series','trend','trending_tv'],['Películas populares','film','popular_movie'],['Series populares','tv','popular_tv'],['Próximos estrenos','clock','upcoming']];
@@ -83,12 +84,39 @@ const views={
  async series(){await lib('Series','tv',[['series','Series'],['series_anim','Series de animación']])},
  async list(){m.innerHTML=`<h2>${ic('bookmark')}Mi lista</h2>`+grid(await api('/api/watchlist'))},
  calendar:calView,downloads:dl,settings:cfg};
-let libKinds=[];
+let LS={};
+const flt=()=>localStorage.getItem('libFilter')||'all';
 async function lib(title,icn,kinds){
-  libKinds=kinds;
   m.innerHTML='<div class="empty">Leyendo biblioteca…</div>';
-  const data=await Promise.all(kinds.map(k=>api('/api/library/'+k[0])));
-  m.innerHTML=`<h2>${ic(icn)}${title}</h2>`+kinds.map((k,n)=>`<h2 class="sub">${k[1]} <small>(${data[n].length})</small></h2>`+(data[n].length?`<div class="grid">${data[n].map(i=>card(i).replace('<div class="ov">',`<button class="fixb" data-fix="${esc(k[0])}" data-f="${esc(i.folder)}" title="Corregir identificación">${ic('edit')}</button><div class="ov">`)).join('')}</div>`:'<div class="empty">Sin contenido. Configura la ruta en Ajustes → Bibliotecas.</div>')).join('')}
+  const mv=kinds[0][0].startsWith('movies'),cfgs=await api('/api/settings'),group=mv&&cfgs.group_sagas==='1';
+  const data=await Promise.all(kinds.map(k=>api('/api/library/'+k[0]+(group?'?collections=1':''))));
+  LS={title,icn,kinds,data,s:cfgs,mv,group};libRender();
+}
+function libCard(k,i){
+  const btn=`<button class="fixb" data-fix="${esc(k)}" data-f="${esc(i.folder)}" title="Corregir identificación">${ic('edit')}</button>`+
+   (i.tmdb_id?`<button class="fixb p" data-poster="${esc(k)}" data-f="${esc(i.folder)}" title="Elegir carátula">${ic('image')}</button>`:'');
+  return card(i).replace('<div class="ov">',btn+'<div class="ov">');
+}
+function libSection(k,list,mv,group){
+  if(!list.length)return '<div class="empty">Sin contenido. Configura la ruta en Ajustes → Bibliotecas.</div>';
+  const cells=l=>`<div class="grid">${l.map(i=>libCard(k,i)).join('')}</div>`;
+  if(!group)return cells(list);
+  const by={};list.forEach(i=>{const n=i.collection?.name||'';(by[n]=by[n]||[]).push(i)});
+  const names=Object.keys(by).filter(Boolean).sort((x,y)=>x.localeCompare(y,'es'));
+  return names.map(n=>`<h3 class="saga">${esc(n)} <small>(${by[n].length})</small></h3>`+cells(by[n])).join('')+
+   (by['']?(names.length?'<h3 class="saga">Sin saga</h3>':'')+cells(by['']):'');
+}
+function libRender(){
+  const {title,icn,kinds,data,mv,group}=LS,f=flt();
+  const bar=`<div class="toolbar"><div class="seg">${[['all','Todo'],['normal','Normales'],['anim','Animación']].map(x=>`<button class="${f===x[0]?'on':''}" data-flt="${x[0]}">${x[1]}</button>`).join('')}</div>
+   ${mv?`<label class="chk"><input type="checkbox" id="gs" ${group?'checked':''}> Agrupar sagas</label>`:''}
+   <button class="btn sec sm" id="rn">${ic('edit')}Renombrar</button></div>`;
+  m.innerHTML=`<h2>${ic(icn)}${title}</h2>${bar}`+kinds.map((k,n)=>(f==='normal'&&n!==0)||(f==='anim'&&n!==1)?'':
+   `<h2 class="sub">${k[1]} <small>(${data[n].length})</small></h2>`+libSection(k[0],data[n],mv,group)).join('');
+  m.querySelectorAll('[data-flt]').forEach(b=>b.onclick=()=>{localStorage.setItem('libFilter',b.dataset.flt);libRender()});
+  const gs=$('#gs');if(gs)gs.onchange=async()=>{try{await api('/api/settings',J('PUT',{group_sagas:gs.checked?'1':'0'}));lib(title,icn,kinds)}catch(e){toast(e.message,1)}};
+  $('#rn').onclick=renameDialog;
+}
 let current='discover',started=false;
 async function go(v){current=v;$('#q').value='';document.querySelectorAll('#menu a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
   try{await loadMine();await views[v]()}catch(e){fail(e)}}
@@ -111,6 +139,50 @@ function fixDialog(kind,folder){
     $('#fres').innerHTML=r.length?`<table>${r.map(x=>`<tr><td>${x.poster?`<img src="${esc(x.poster)}" width="40" alt="">`:''}</td><td>${esc(x.title)} <small>${esc(x.year)}</small><br><small>${esc((x.overview||'').slice(0,110))}</small></td><td><button class="btn sm" data-id="${x.tmdb_id}">Elegir</button></td></tr>`).join('')}</table>`:'<div class="empty">Sin resultados</div>';
     $('#fres').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>send(+b.dataset.id))}catch(e){$('#fres').innerHTML=`<div class="err">${esc(e.message)}</div>`}};
   $('#fgo').onclick=go;$('#fq').onkeydown=e=>{if(e.key==='Enter')go()};$('#frs').onclick=()=>send(null);$('#fcl').onclick=()=>ov.remove();go();
+}
+
+// ---------- carátulas ----------
+async function posterDialog(kind,folder){
+  const item=LS.data.flat().find(i=>i.folder===folder);if(!item)return;
+  const ov=document.createElement('div');ov.className='open';ov.id='bro';document.body.appendChild(ov);
+  ov.innerHTML=`<div class="dlg wide"><div class="body"><h3>Elegir carátula</h3><p>${esc(item.title)} <small>${esc(item.year)}</small></p>
+   <label class="chk"><input type="checkbox" id="pf"> Guardar también como <code>poster.jpg</code> en la carpeta</label>
+   <div id="pl" class="posters"><div class="empty">Cargando…</div></div><div class="actions"><button class="btn sec" id="pc">Cerrar</button></div></div></div>`;
+  $('#pc').onclick=()=>ov.remove();
+  try{const l=await api(`/api/posters/${item.media_type}/${item.tmdb_id}`);
+   $('#pl').innerHTML=l.length?l.map((p,n)=>`<figure data-n="${n}"><img loading="lazy" src="${esc(p.poster)}" alt=""><figcaption>${esc(p.lang||'sin texto')}</figcaption></figure>`).join(''):'<div class="empty">Sin carátulas disponibles</div>';
+   $('#pl').querySelectorAll('figure').forEach(f=>f.onclick=async()=>{const p=l[f.dataset.n];
+    try{const r=await api(`/api/library/${kind}/poster`,J('POST',{folder,poster:p.poster,full:p.full,save_file:$('#pf').checked}));
+     toast(r.saved_file===false?'Carátula elegida, pero no se pudo guardar poster.jpg (¿solo lectura?)':'Carátula actualizada',r.saved_file===false);ov.remove();lib(LS.title,LS.icn,LS.kinds)}catch(e){toast(e.message,1)}})
+  }catch(e){$('#pl').innerHTML=`<div class="err">${esc(e.message)}</div>`}
+}
+
+// ---------- renombrar ----------
+function renameDialog(){
+  const f=flt(),kinds=LS.kinds.filter((k,n)=>!((f==='normal'&&n!==0)||(f==='anim'&&n!==1))).map(k=>k[0]);
+  const ov=document.createElement('div');ov.className='open';ov.id='bro';document.body.appendChild(ov);
+  ov.innerHTML=`<div class="dlg wide"><div class="body"><h3>Renombrar ${esc(LS.title.toLowerCase())}</h3>
+   <p class="desc">Renombra carpetas y archivos a «Título (Año)» en castellano. En series, los episodios pasan a «Título - S01E02». Revisa la vista previa antes de aplicar.</p>
+   <label for="rp">Fuente de los títulos</label><select id="rp"><option value="tmdb">TheMovieDB</option><option value="tvdb">TheTVDB</option></select>
+   ${LS.mv?`<label class="chk"><input type="checkbox" id="rg" ${LS.s.group_sagas==='1'?'checked':''}> Mover las películas a carpetas de saga («Nombre (Saga)»)</label>`:''}
+   <div class="actions"><button class="btn" id="rv">${ic('search')}Vista previa</button><button class="btn sec" id="rc">Cerrar</button></div><div id="rr"></div></div></div>`;
+  $('#rp').value=LS.s.rename_provider||'tmdb';$('#rc').onclick=()=>ov.remove();
+  const body=(extra={})=>({kinds,provider:$('#rp').value,group_sagas:!!$('#rg')?.checked,...extra});
+  $('#rv').onclick=async()=>{const box=$('#rr');box.innerHTML='<div class="empty">Calculando…</div>';
+    try{const {entries}=await api('/api/library/rename',J('POST',body()));
+     const LBL={unidentified:'Sin identificar',conflict:'Ya existe el destino',error:'Error'};
+     const ch=entries.filter(e=>e.status!=='same');
+     box.innerHTML=ch.length?`<div class="panel"><table>${ch.map(e=>`<tr><td>${e.status==='ok'?`<input type="checkbox" class="rk" checked data-k="${esc(e.kind+'|'+e.folder)}">`:''}</td>
+       <td>${esc(e.folder)}${e.new!==e.folder?`<br>→ <b>${esc(e.new)}</b>`:''}${e.episodes.length?`<br><small>${e.episodes.filter(x=>!x.conflict).length} episodio(s) a renombrar</small>`:''}</td>
+       <td>${e.status==='ok'?'':`<span class="pill">${esc(LBL[e.status])}</span>`}${e.error?`<br><small>${esc(e.error)}</small>`:''}</td></tr>`).join('')}</table></div>
+       <div class="actions"><button class="btn" id="ra">${ic('check')}Aplicar a los seleccionados</button></div>`:'<div class="empty">Todo está ya con el nombre correcto</div>';
+     const ra=$('#ra');if(ra)ra.onclick=async()=>{ra.disabled=true;
+      const only=[...box.querySelectorAll('.rk:checked')].map(x=>x.dataset.k);
+      try{const {results}=await api('/api/library/rename',J('POST',body({apply:true,only})));
+       const bad=results.filter(r=>!r.ok);
+       box.innerHTML=`<div class="${bad.length?'err':'empty'}">${results.length-bad.length} renombrado(s)${bad.length?` · ${bad.length} con error:<br>${bad.map(r=>esc(r.folder)+': '+esc(r.error)).join('<br>')}`:''}</div>`;
+       lib(LS.title,LS.icn,LS.kinds)}catch(e){ra.disabled=false;toast(e.message,1)}}
+    }catch(e){box.innerHTML=`<div class="err">${esc(e.message)}</div>`}};
 }
 
 // ---------- ficha ----------
@@ -177,6 +249,8 @@ const SECTIONS=[
   fields:[['tmdb_api_key','Clave API de TMDB','password','Ajustes de tu cuenta de TMDB → API']]},
  {icon:'search',title:'Jackett (fuente de torrents)',desc:'Tu JackettVPN con el indexador Wolfmax4k. Solo se muestran resultados en castellano. Mantén Jackett actualizado: Wolfmax4k cambia a menudo.',test:'torznab',
   fields:[['torznab_url','URL Torznab','text','Ej.: http://IP_NAS:9117/api/v2.0/indexers/all/results/torznab/api'],['torznab_apikey','Clave API de Jackett','password','Arriba a la derecha en el panel de Jackett']]},
+ {icon:'image',title:'Renombrado y carátulas',desc:'Fuente de los títulos al renombrar (siempre en castellano) y agrupación de sagas. TheTVDB necesita una clave API gratuita de thetvdb.com; las carátulas se eligen siempre entre las de TMDB.',test:'tvdb',
+  fields:[['tvdb_api_key','Clave API de TheTVDB','password','Opcional: solo si renombras con TheTVDB'],['rename_provider','Fuente por defecto','select','',[['tmdb','TheMovieDB'],['tvdb','TheTVDB']]],['group_sagas','Agrupar sagas de películas','select','Muestra las sagas juntas en Películas y, al renombrar, las mueve a carpetas «(Saga)»',[['0','No'],['1','Sí']]]]},
  {icon:'server',title:'Download Station (XPEnology / Synology)',desc:'Usa un usuario de DSM con permiso para Download Station y sin verificación en dos pasos.',test:'ds',
   fields:[['ds_url','URL de DSM','text','Ej.: http://192.168.1.10:5000'],['ds_user','Usuario','text',''],['ds_password','Contraseña','password',''],['ds_destination','Carpeta de destino','text','Carpeta compartida, p. ej. video/peliculas. Vacío = la predeterminada']]},
  {icon:'film',title:'Bibliotecas',desc:'Rutas de las carpetas del NAS tal como las ve el contenedor (por ejemplo /media/peliculas). Cada tipo va en su propia carpeta.',test:'library',
@@ -196,7 +270,7 @@ async function browse(input){
 async function cfg(){
   const s=await api('/api/settings');
   m.innerHTML=`<h2>${ic('settings')}Ajustes</h2>`+SECTIONS.map((sec,n)=>`<form class="sect form" data-n="${n}"><h3>${ic(sec.icon)}${sec.title}</h3><p class="desc">${sec.desc}</p>
-   ${sec.fields.map(f=>`<label for="f_${f[0]}">${f[1]}</label><input id="f_${f[0]}" name="${f[0]}" type="${f[2]}" value="${esc(s[f[0]])}" autocomplete="off">${f[0].startsWith('lib_')?`<button class="btn sec sm" type="button" data-browse="${f[0]}">Examinar…</button>`:''}${f[3]?`<small>${f[3]}</small>`:''}`).join('')}
+   ${sec.fields.map(f=>`<label for="f_${f[0]}">${f[1]}</label>${f[2]==='select'?`<select id="f_${f[0]}" name="${f[0]}">${f[4].map(o=>`<option value="${o[0]}" ${String(s[f[0]])===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`:`<input id="f_${f[0]}" name="${f[0]}" type="${f[2]}" value="${esc(s[f[0]])}" autocomplete="off">`}${f[0].startsWith('lib_')?`<button class="btn sec sm" type="button" data-browse="${f[0]}">Examinar…</button>`:''}${f[3]?`<small>${f[3]}</small>`:''}`).join('')}
    <div class="actions"><button class="btn" type="submit">${ic('check')}Guardar</button>${sec.test?`<button class="btn sec" type="button" data-test="${sec.test}">Probar</button>`:''}
    ${sec.extra==='auto'?`<button class="btn sec" type="button" data-auto>Ejecutar ahora</button>`:''}<span class="msg"></span></div></form>`).join('')+
   `<form class="sect form" id="pwf"><h3>${ic('key')}Cuenta</h3><p class="desc">Cambia la contraseña de acceso a allarr.</p>
@@ -204,7 +278,7 @@ async function cfg(){
    <label for="pw1">Nueva contraseña (mínimo 8 caracteres)</label><input id="pw1" type="password" autocomplete="new-password" required minlength="8">
    <div class="actions"><button class="btn" type="submit">${ic('check')}Cambiar contraseña</button><span class="msg"></span></div></form>`;
   const say=(f,t,ok)=>{const e=f.querySelector('.msg');e.textContent=t;e.className='msg '+(ok?'ok':'bad')};
-  const save=f=>{const b={};f.querySelectorAll('input[name]').forEach(i=>b[i.name]=i.value);return api('/api/settings',J('PUT',b))};
+  const save=f=>{const b={};f.querySelectorAll('input[name],select[name]').forEach(i=>b[i.name]=i.value);return api('/api/settings',J('PUT',b))};
   m.querySelectorAll('form.sect[data-n]').forEach(f=>{
     f.onsubmit=async e=>{e.preventDefault();try{await save(f);say(f,'Guardado',1)}catch(x){say(f,x.message)}};
     const tb=f.querySelector('[data-test]');if(tb)tb.onclick=async()=>{say(f,'Probando…',1);try{await save(f);say(f,(await api('/api/test/'+tb.dataset.test,{method:'POST'})).message,1)}catch(x){say(f,x.message)}};

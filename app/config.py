@@ -11,6 +11,9 @@ DEFAULTS = {
     "language": os.getenv("ALLARR_LANGUAGE", "es-ES"),
     "torznab_url": os.getenv("TORZNAB_URL", ""),
     "torznab_apikey": os.getenv("TORZNAB_APIKEY", ""),
+    "tvdb_api_key": os.getenv("TVDB_API_KEY", ""),
+    "rename_provider": "tmdb",
+    "group_sagas": "0",
     "auto_interval_min": os.getenv("AUTO_INTERVAL_MIN", "60"),
     "ds_url": os.getenv("DS_URL", ""),
     "ds_user": os.getenv("DS_USER", ""),
@@ -21,7 +24,7 @@ DEFAULTS = {
     "lib_series": os.getenv("LIB_SERIES", ""),
     "lib_series_anim": os.getenv("LIB_SERIES_ANIM", ""),
 }
-SECRET_KEYS = {"tmdb_api_key", "torznab_apikey", "ds_password"}
+SECRET_KEYS = {"tmdb_api_key", "tvdb_api_key", "torznab_apikey", "ds_password"}
 
 
 def conn() -> sqlite3.Connection:

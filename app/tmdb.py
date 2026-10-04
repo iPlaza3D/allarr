@@ -5,6 +5,8 @@ import httpx
 BASE = "https://api.themoviedb.org/3"
 IMG = "https://image.tmdb.org/t/p/w342"
 BACKDROP = "https://image.tmdb.org/t/p/w780"
+ORIGINAL = "https://image.tmdb.org/t/p/original"
+IMG_PREFIX = "https://image.tmdb.org/t/p/"
 
 
 class TMDB:
@@ -54,6 +56,17 @@ class TMDB:
         out["tagline"] = d.get("tagline", "")
         out["seasons"] = [s["season_number"] for s in d.get("seasons", []) if s["season_number"] > 0]
         return out
+
+    def collection_of(self, tmdb_id: int) -> dict | None:
+        c = self._get(f"/movie/{tmdb_id}").get("belongs_to_collection")
+        return {"id": c["id"], "name": c["name"]} if c else None
+
+    def posters(self, media_type: str, tmdb_id: int) -> list[dict]:
+        d = self._get(f"/{media_type}/{tmdb_id}/images", include_image_language="es,en,null")
+        order = {"es": 0, None: 1}
+        ps = sorted(d.get("posters", []), key=lambda p: (order.get(p.get("iso_639_1"), 2), -(p.get("vote_average") or 0)))
+        return [{"poster": f"{IMG}{p['file_path']}", "full": f"{ORIGINAL}{p['file_path']}", "lang": p.get("iso_639_1") or ""}
+                for p in ps[:40]]
 
     def season(self, tmdb_id: int, number: int) -> list[dict]:
         d = self._get(f"/tv/{tmdb_id}/season/{number}")
