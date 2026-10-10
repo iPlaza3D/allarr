@@ -45,7 +45,7 @@ async function boot(){
   if(s.authenticated){authBox.hidden=true;appBox.hidden=false;$('#who').textContent=s.username;startApp();return}
   appBox.hidden=true;authBox.hidden=false;
   const setup=s.setup_needed;
-  authBox.innerHTML=`<form class="authbox" id="af"><div class="brand">${ic('logo')}<span>allarr</span></div>
+  authBox.innerHTML=`<form class="authbox" id="af"><div class="brand">${ic('logo')}<span>media-server-utility</span></div>
   <p class="sub">${setup?'Crea la cuenta de administrador para empezar':'Inicia sesión para continuar'}</p>
   <label for="u">Usuario</label><input id="u" autocomplete="username" required autofocus>
   <label for="p">Contraseña${setup?' (mínimo 8 caracteres)':''}</label><input id="p" type="password" autocomplete="${setup?'new-password':'current-password'}" required minlength="${setup?8:1}">
@@ -57,7 +57,7 @@ async function boot(){
     catch(x){er.textContent=x.message;er.hidden=false}};
 }
 $('#logout').innerHTML=ic('logout');$('#logout').onclick=()=>api('/api/auth/logout',{method:'POST'}).then(boot);
-$('#logout').style.cursor='pointer';$('#logo').innerHTML=ic('logo')+'<span>allarr</span>';
+$('#logout').style.cursor='pointer';$('#logo').innerHTML=ic('logo')+'<span>media-server-utility</span>';
 
 // ---------- aplicación ----------
 const key=i=>i.media_type+':'+(i.tmdb_id??'f:'+i.folder);
@@ -273,7 +273,7 @@ async function cfg(){
    ${sec.fields.map(f=>`<label for="f_${f[0]}">${f[1]}</label>${f[2]==='select'?`<select id="f_${f[0]}" name="${f[0]}">${f[4].map(o=>`<option value="${o[0]}" ${String(s[f[0]])===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`:`<input id="f_${f[0]}" name="${f[0]}" type="${f[2]}" value="${esc(s[f[0]])}" autocomplete="off">`}${f[0].startsWith('lib_')?`<button class="btn sec sm" type="button" data-browse="${f[0]}">Examinar…</button>`:''}${f[3]?`<small>${f[3]}</small>`:''}`).join('')}
    <div class="actions"><button class="btn" type="submit">${ic('check')}Guardar</button>${sec.test?`<button class="btn sec" type="button" data-test="${sec.test}">Probar</button>`:''}
    ${sec.extra==='auto'?`<button class="btn sec" type="button" data-auto>Ejecutar ahora</button>`:''}<span class="msg"></span></div></form>`).join('')+
-  `<form class="sect form" id="pwf"><h3>${ic('key')}Cuenta</h3><p class="desc">Cambia la contraseña de acceso a allarr.</p>
+  `<form class="sect form" id="pwf"><h3>${ic('key')}Cuenta</h3><p class="desc">Cambia la contraseña de acceso a media-server-utility.</p>
    <label for="pw0">Contraseña actual</label><input id="pw0" type="password" autocomplete="current-password" required>
    <label for="pw1">Nueva contraseña (mínimo 8 caracteres)</label><input id="pw1" type="password" autocomplete="new-password" required minlength="8">
    <div class="actions"><button class="btn" type="submit">${ic('check')}Cambiar contraseña</button><span class="msg"></span></div></form>`;

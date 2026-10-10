@@ -68,7 +68,7 @@ def test_forged_cookie_rejected(monkeypatch, tmp_path):
     c = _client(monkeypatch, tmp_path)
     c.post("/api/auth/setup", json={"username": "admin", "password": "claveSegura1"})
     c.cookies.clear()
-    c.cookies.set("allarr_session", "YWRtaW58OTk5OTk5OTk5OQ==.firma")
+    c.cookies.set("media-server-utility_session", "YWRtaW58OTk5OTk5OTk5OQ==.firma")
     assert c.get("/api/settings").status_code == 401
 
 

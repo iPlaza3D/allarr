@@ -9,7 +9,7 @@ from typing import Optional
 
 from . import config
 
-COOKIE = "allarr_session"
+COOKIE = "media-server-utility_session"
 SESSION_SECONDS = 7 * 24 * 3600
 MIN_PASSWORD = 8
 _ITER = 200_000

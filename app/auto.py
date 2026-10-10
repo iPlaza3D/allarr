@@ -11,7 +11,7 @@ from datetime import date
 from . import config, services
 from .tmdb import TMDB
 
-log = logging.getLogger("allarr.auto")
+log = logging.getLogger("media_server_utility.auto")
 _lock = threading.Lock()
 
 # S01E05, 1x05 y el formato habitual en castellano "Cap.105" / "Cap.1005"

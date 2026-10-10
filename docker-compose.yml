@@ -1,7 +1,7 @@
 services:
-  allarr:
-    image: ${DOCKERHUB_USER:-iplaza3d}/allarr:latest
-    container_name: allarr
+  media-server-utility:
+    image: ${DOCKERHUB_USER:-iplaza3d}/media-server-utility:latest
+    container_name: media-server-utility
     environment:
       - TZ=Europe/Madrid
     volumes:

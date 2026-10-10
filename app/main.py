@@ -16,7 +16,7 @@ from .synology import DownloadStation
 from .tmdb import TMDB
 from .tvdb import TVDB
 
-app = FastAPI(title="allarr")
+app = FastAPI(title="media-server-utility")
 STATIC = Path(__file__).parent / "static"
 
 

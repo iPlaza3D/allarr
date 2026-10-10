@@ -4,11 +4,11 @@ import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(os.getenv("ALLARR_DB", "data/allarr.db"))
+DB_PATH = Path(os.getenv("MEDIA_SERVER_DB", "data/media-server.db"))
 
 DEFAULTS = {
     "tmdb_api_key": os.getenv("TMDB_API_KEY", ""),
-    "language": os.getenv("ALLARR_LANGUAGE", "es-ES"),
+    "language": os.getenv("MEDIA_SERVER_LANG", "es-ES"),
     "torznab_url": os.getenv("TORZNAB_URL", ""),
     "torznab_apikey": os.getenv("TORZNAB_APIKEY", ""),
     "tvdb_api_key": os.getenv("TVDB_API_KEY", ""),
